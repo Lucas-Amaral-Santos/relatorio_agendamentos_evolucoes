@@ -33,6 +33,10 @@ if file1 and file2:
     
 
 if df_agend is not None and df_evol is not None and st.button("Criar relatório final"):
+    
+    df_profissionais = pd.read_excel("funcionarios_setor.xlsx")
+
+
     # Criar coluna auxiliar com nome limpo
     df_agend['PROF_LIMPO'] = df_agend['PROFISSIONAL'].apply(limpar_profissional)
     df_evol['PROF_LIMPO']  = df_evol['PROFISSIONAL'].apply(limpar_profissional)
@@ -82,6 +86,12 @@ if df_agend is not None and df_evol is not None and st.button("Criar relatório 
 
     # Preencher evoluções sem correspondência com 0
     df_final['Nº DE EVOLUÇÕES'] = df_final['Nº DE EVOLUÇÕES'].fillna(0).astype(int)
+    
+    df_final['PROFISSIONAL'] = df_final['PROFISSIONAL'].str.split('(').str[0].str.strip()
+    df_final = df_final.merge(df_profissionais, left_on='PROFISSIONAL', right_on="Nome do Funcionário", how='left')
+    df_final = df_final[['PROFISSIONAL', 'DATA', "Nº DE PACIENTES", "Nº DE EVOLUÇÕES", "Setor"]]
+    df_final.columns = df_final.columns.str.upper()
+
 
     st.write("Relatório Final:")
     st.dataframe(df_final)
