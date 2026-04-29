@@ -32,8 +32,13 @@ if file1 and file2:
     st.dataframe(df_evol)
     
 
-if df_agend is not None and df_evol is not None and st.button("Criar relatório final"):
+if df_agend is not None and df_evol is not None:
     
+    df_agend['PROFISSIONAL'] = df_agend['PROFISSIONAL'].str.split('(').str[0].str.strip()
+    df_agend['PROFISSIONAL'] = df_agend['PROFISSIONAL'].str.split('-').str[0].str.strip()
+
+    df_evol['PROFISSIONAL'] = df_evol['PROFISSIONAL'].str.split('(').str[0].str.strip()
+        
     df_profissionais = pd.read_excel("funcionarios_setor.xlsx")
 
 
@@ -106,4 +111,38 @@ if df_agend is not None and df_evol is not None and st.button("Criar relatório 
         file_name="relatorio_final.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+    
+    st.write("Planilhas do Reintegrar:")
+    
+    df_pacientes_reint = df_pacientes.merge(df_profissionais, left_on='PROF_LIMPO', right_on="Nome do Funcionário", how='left').rename(columns={'PROF_LIMPO': 'PROFISSIONAL', 'Setor': 'SETOR'})[['PROFISSIONAL', 'Nº DE PACIENTES', 'DATA', 'SETOR']]
+    df_pacientes_reint = df_pacientes_reint[df_pacientes_reint['SETOR'] == 'Reintegrar']
+
+    st.dataframe(df_pacientes_reint)
+    
+    buffer2 = BytesIO()
+    df_pacientes_reint.to_excel(buffer2, index=False, engine='openpyxl')
+    buffer2.seek(0)
+
+    st.download_button(
+        label="Download Agendamentos Reintegrar",
+        data=buffer2,
+        file_name="agendamentos_reintegar.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    
+    df_evolucoes_reint = df_evolucoes.merge(df_profissionais, left_on='PROF_LIMPO', right_on="Nome do Funcionário", how='left').rename(columns={'PROF_LIMPO': 'PROFISSIONAL', 'Setor': 'SETOR'})[['PROFISSIONAL', 'Nº DE EVOLUÇÕES', 'DATA', 'SETOR']]
+    df_evolucoes_reint = df_evolucoes_reint[df_evolucoes_reint['SETOR'] == 'Reintegrar']
+    st.dataframe(df_evolucoes_reint)
+    
+    buffer3 = BytesIO()
+    df_evolucoes_reint.to_excel(buffer3, index=False, engine='openpyxl')
+    buffer3.seek(0)
+    
+    st.download_button(
+        label="Download Evoluções Reintegrar",
+        data=buffer3,
+        file_name="evolucoes_reintegar.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    
     
