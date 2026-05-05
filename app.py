@@ -2,6 +2,74 @@ import streamlit as st
 import pandas as pd
 import re
 from io import BytesIO
+import mysql.connector
+import math
+
+conn = mysql.connector.connect(
+    host="mysql20-farm1.kinghost.net",
+    user="afr0202_add1",
+    password="La12345",
+    database="afr02", 
+    port=3306
+)
+
+mycursor = conn.cursor()
+def limpar(val):
+    if val is None:
+        return None
+    if isinstance(val, float) and math.isnan(val):
+        return None
+    try:
+        if math.isnan(float(val)):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return val
+
+def df_to_mysql(df: pd.DataFrame, table: str, conn):
+    cursor = conn.cursor()
+
+    # Verifica se a tabela existe
+    cursor.execute("""
+        SELECT COUNT(*) FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+        AND table_name = %s
+    """, (table,))
+
+    existe = cursor.fetchone()[0] > 0
+
+    if not existe:
+        tipo_map = {
+            "int64":   "BIGINT",
+            "int32":   "INT",
+            "float64": "DOUBLE",
+            "float32": "FLOAT",
+            "bool":    "TINYINT(1)",
+            "object":  "TEXT",
+        }
+        colunas = ", ".join(
+            f"`{col}` {tipo_map.get(str(df[col].dtype), 'TEXT')}"
+            for col in df.columns
+        )
+        cursor.execute(f"CREATE TABLE `{table}` ({colunas})")
+        conn.commit()
+        print(f"[OK] Tabela '{table}' criada.")
+
+    placeholders = ", ".join(["%s"] * len(df.columns))
+    colunas_str  = ", ".join(f"`{c}`" for c in df.columns)
+    sql = f"INSERT INTO `{table}` ({colunas_str}) VALUES ({placeholders})"
+
+    # iterrows garante que cada célula passa pela limpeza
+    rows = [
+        tuple(limpar(val) for val in row)
+        for _, row in df.iterrows()
+    ]
+
+    cursor.executemany(sql, rows)
+    conn.commit()
+
+    print(f"[OK] {len(df)} linhas gravadas em '{table}' (modo: {'append' if existe else 'create'})")
+    cursor.close()
 
 
 
@@ -112,6 +180,10 @@ if df_agend is not None and df_evol is not None:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     
+    if st.button("Enviar para MySQL", key="enviar_mysql_final"):
+        df_to_mysql(df_final, "relatorio_agendamento_evolucoes", conn)
+        st.success("Dados enviados para MySQL com sucesso!")
+    
     st.write("Planilhas do Reintegrar:")
     
     df_pacientes_reint = df_pacientes.merge(df_profissionais, left_on='PROF_LIMPO', right_on="Nome do Funcionário", how='left').rename(columns={'PROF_LIMPO': 'PROFISSIONAL', 'Setor': 'SETOR'})[['PROFISSIONAL', 'Nº DE PACIENTES', 'DATA', 'SETOR']]
@@ -130,6 +202,10 @@ if df_agend is not None and df_evol is not None:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     
+    if st.button("Enviar para o MySQL", key="enviar_mysql_reint"):
+        df_to_mysql(df_pacientes_reint, "agendamentos_reintegrar", conn)
+        st.success("Dados de agendamento do Reintegrar enviados para MySQL com sucesso!")
+
     df_evolucoes_reint = df_evolucoes.merge(df_profissionais, left_on='PROF_LIMPO', right_on="Nome do Funcionário", how='left').rename(columns={'PROF_LIMPO': 'PROFISSIONAL', 'Setor': 'SETOR'})[['PROFISSIONAL', 'Nº DE EVOLUÇÕES', 'DATA', 'SETOR']]
     df_evolucoes_reint = df_evolucoes_reint[df_evolucoes_reint['SETOR'] == 'Reintegrar']
     st.dataframe(df_evolucoes_reint)
@@ -144,5 +220,24 @@ if df_agend is not None and df_evol is not None:
         file_name="evolucoes_reintegar.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+    if st.button("Enviar para o MySQL", key="enviar_mysql_evol_reint"):
+        df_to_mysql(df_evolucoes_reint, "evolucoes_reintegrar", conn)
+        st.success("Dados de evoluções do Reintegrar enviados para MySQL com sucesso!")
     
     
+    st.write("Funcionários da AFR:")
+    
+    df_funcionarios_afr = pd.read_sql("SELECT `Nome do Funcionário`, `Setor` FROM funcionarios_setor", conn)
+    edited_funcionarios_afr = st.data_editor(df_funcionarios_afr, num_rows="dynamic", use_container_width=True)
+    
+    if st.button("Editar Funcionários AFR no MySQL"):
+        for _, row in edited_funcionarios_afr.iterrows():
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE funcionarios_setor
+                SET `Setor` = %s
+                WHERE `Nome do Funcionário` = %s
+            """, (row['Setor'], row['Nome do Funcionário']))
+        conn.commit()
+        st.success("Funcionários da AFR atualizados no MySQL com sucesso!")
+        
