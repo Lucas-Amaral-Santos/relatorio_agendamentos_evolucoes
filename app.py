@@ -110,7 +110,9 @@ with tab1:
 
         df_evol['PROFISSIONAL'] = df_evol['PROFISSIONAL'].str.split('(').str[0].str.strip()
             
-        df_profissionais = pd.read_excel("funcionarios_setor.xlsx")
+        df_profissionais = pd.read_sql(
+            "SELECT `Nome do Funcionário`, `Setor` FROM funcionarios_setor", conn
+        )
 
 
         # Criar coluna auxiliar com nome limpo
@@ -230,17 +232,34 @@ with tab1:
 with tab2:
     st.markdown("## Funcionários da AFR:")
     
-    df_funcionarios_afr = pd.read_sql("SELECT `Nome do Funcionário`, `Setor` FROM funcionarios_setor", conn)
-    edited_funcionarios_afr = st.data_editor(df_funcionarios_afr, num_rows="dynamic", use_container_width=True)
-    
+    df_funcionarios_afr = pd.read_sql(
+        "SELECT `id`, `Nome do Funcionário`, `Setor` FROM funcionarios_setor", conn
+    )
+    edited_funcionarios_afr = st.data_editor(
+        df_funcionarios_afr,
+        num_rows="dynamic",
+        use_container_width=True,
+        disabled=["id"],  # impede o usuário de editar o id
+    )
+
     if st.button("Editar Funcionários AFR no MySQL"):
+        cursor = conn.cursor()
         for _, row in edited_funcionarios_afr.iterrows():
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE funcionarios_setor
-                SET `Setor` = %s
-                WHERE `Nome do Funcionário` = %s
-            """, (row['Setor'], row['Nome do Funcionário']))
+            if pd.isna(row['id']):
+                # Linha nova adicionada no data_editor — faz INSERT
+                cursor.execute("""
+                    INSERT INTO funcionarios_setor (`Nome do Funcionário`, `Setor`)
+                    VALUES (%s, %s)
+                """, (row['Nome do Funcionário'], row['Setor']))
+            else:
+                # Linha existente — faz UPDATE pela chave
+                cursor.execute("""
+                    UPDATE funcionarios_setor
+                    SET `Nome do Funcionário` = %s,
+                        `Setor` = %s
+                    WHERE `id` = %s
+                """, (row['Nome do Funcionário'], row['Setor'], int(row['id'])))
         conn.commit()
-        st.success("Funcionários da AFR atualizados no MySQL com sucesso!")
-        
+        cursor.close()
+        st.success("Funcionários da AFR atualizados com sucesso!")
+            
