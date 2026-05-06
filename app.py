@@ -228,7 +228,7 @@ with tab1:
             st.success("Dados de evoluções do Reintegrar enviados para MySQL com sucesso!")
         
 with tab2:
-    st.write("Funcionários da AFR:")
+    st.markdown("## Funcionários da AFR:")
     
     df_funcionarios_afr = pd.read_sql("SELECT `Nome do Funcionário`, `Setor` FROM funcionarios_setor", conn)
     edited_funcionarios_afr = st.data_editor(df_funcionarios_afr, num_rows="dynamic", use_container_width=True)
