@@ -4,6 +4,7 @@ import re
 from io import BytesIO
 import mysql.connector
 import math
+import time
 
 conn = mysql.connector.connect(
     host="mysql20-farm1.kinghost.net",
@@ -70,8 +71,6 @@ def df_to_mysql(df: pd.DataFrame, table: str, conn):
 
     print(f"[OK] {len(df)} linhas gravadas em '{table}' (modo: {'append' if existe else 'create'})")
     cursor.close()
-
-
 
 # Função para limpar o nome do profissional (trata NaN)
 def limpar_profissional(nome):
@@ -235,14 +234,33 @@ with tab2:
     df_funcionarios_afr = pd.read_sql(
         "SELECT `id`, `Nome do Funcionário`, `Setor` FROM funcionarios_setor", conn
     )
+    df_funcionarios_afr['Selecionar'] = False  # coluna para checkbox de seleção
+    
     edited_funcionarios_afr = st.data_editor(
         df_funcionarios_afr,
         num_rows="dynamic",
         use_container_width=True,
         disabled=["id"],  # impede o usuário de editar o id
     )
+    
+    funcionario_input = st.text_input("Adicionar novo funcionário:")
+    setor_input = st.text_input("Setor do novo funcionário:")
+    
+    if st.button("Adicionar Funcionário AFR"):
+        if funcionario_input and setor_input:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO funcionarios_setor (`Nome do Funcionário`, `Setor`)
+                VALUES (%s, %s)
+            """, (funcionario_input, setor_input))
+            conn.commit()
+            cursor.close()
+            st.success(f"Funcionário '{funcionario_input}' adicionado com sucesso!")
+            st.rerun()  # recarrega a página para mostrar o novo funcionário
+        else:
+            st.warning("Por favor, preencha ambos os campos para adicionar um funcionário.")
 
-    if st.button("Editar Funcionários AFR no MySQL"):
+    if st.button("Editar Funcionários AFR"):
         cursor = conn.cursor()
         for _, row in edited_funcionarios_afr.iterrows():
             if pd.isna(row['id']):
@@ -262,4 +280,27 @@ with tab2:
         conn.commit()
         cursor.close()
         st.success("Funcionários da AFR atualizados com sucesso!")
-            
+        st.rerun()  # recarrega a página para mostrar as atualizações
+        
+        # botão para apagar
+    if st.button("🗑️ Apagar registros de funcionários"):
+        selecionados = edited_funcionarios_afr[edited_funcionarios_afr["Selecionar"]]
+
+        if not selecionados.empty:
+            ids = selecionados["id"].tolist()
+            try:
+                cursor = conn.cursor()
+                cursor.executemany(
+                    "DELETE FROM funcionarios_setor WHERE id = %s",
+                    [(int(id_reg),) for id_reg in ids]
+                )
+                conn.commit()
+                st.success(f"{len(ids)} registro(s) apagado(s).")
+                st.rerun()  # ← fix #5
+            except Exception as e:
+                conn.rollback()
+                st.error(f"Erro ao apagar registros: {e}")
+            finally:
+                cursor.close()
+        else:
+            st.warning("Nenhum funcionário selecionado.")
