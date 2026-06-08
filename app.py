@@ -108,6 +108,7 @@ with tab1:
         df_agend['PROFISSIONAL'] = df_agend['PROFISSIONAL'].str.split('-').str[0].str.strip()
 
         df_evol['PROFISSIONAL'] = df_evol['PROFISSIONAL'].str.split('(').str[0].str.strip()
+        df_evol['PROFISSIONAL'] = df_evol['PROFISSIONAL'].str.split('-').str[0].str.strip()
             
         df_profissionais = pd.read_sql(
             "SELECT `Nome do Funcionário`, `Setor` FROM funcionarios_setor", conn
@@ -184,9 +185,9 @@ with tab1:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         
-        if st.button("Enviar para MySQL", key="enviar_mysql_final"):
-            df_to_mysql(df_final, "relatorio_agendamento_evolucoes", conn)
-            st.success("Dados enviados para MySQL com sucesso!")
+        # if st.button("Enviar para MySQL", key="enviar_mysql_final"):
+        #     df_to_mysql(df_final, "relatorio_agendamento_evolucoes", conn)
+        #     st.success("Dados enviados para MySQL com sucesso!")
 
         st.write("Planilhas do Reintegrar:")
         
@@ -206,9 +207,9 @@ with tab1:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         
-        if st.button("Enviar para o MySQL", key="enviar_mysql_reint"):
-            df_to_mysql(df_pacientes_reint, "agendamentos_reintegrar", conn)
-            st.success("Dados de agendamento do Reintegrar enviados para MySQL com sucesso!")
+        # if st.button("Enviar para o MySQL", key="enviar_mysql_reint"):
+        #     df_to_mysql(df_pacientes_reint, "agendamentos_reintegrar", conn)
+        #     st.success("Dados de agendamento do Reintegrar enviados para MySQL com sucesso!")
 
         df_evolucoes_reint = df_evolucoes.merge(df_profissionais, left_on='PROF_LIMPO', right_on="Nome do Funcionário", how='left').rename(columns={'PROF_LIMPO': 'PROFISSIONAL', 'Setor': 'SETOR'})[['PROFISSIONAL', 'Nº DE EVOLUÇÕES', 'DATA', 'SETOR']]
         df_evolucoes_reint = df_evolucoes_reint[df_evolucoes_reint['SETOR'] == 'Reintegrar']
@@ -224,9 +225,17 @@ with tab1:
             file_name="evolucoes_reintegar.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        if st.button("Enviar para o MySQL", key="enviar_mysql_evol_reint"):
+        # if st.button("Enviar para o MySQL", key="enviar_mysql_evol_reint"):
+        #     df_to_mysql(df_evolucoes_reint, "evolucoes_reintegrar", conn)
+        #     st.success("Dados de evoluções do Reintegrar enviados para MySQL com sucesso!")
+            
+            
+        # Botão para enviar o todas as planilhas para o MySQL
+        if st.button("Enviar todas as planilhas para o MySQL", key="enviar_mysql_todas"):
+            df_to_mysql(df_final, "relatorio_agendamento_evolucoes", conn)
+            df_to_mysql(df_pacientes_reint, "agendamentos_reintegrar", conn)
             df_to_mysql(df_evolucoes_reint, "evolucoes_reintegrar", conn)
-            st.success("Dados de evoluções do Reintegrar enviados para MySQL com sucesso!")
+            st.success("Todas as planilhas enviadas para MySQL com sucesso!")
         
 with tab2:
     st.markdown("## Funcionários da AFR:")
@@ -246,7 +255,7 @@ with tab2:
     funcionario_input = st.text_input("Adicionar novo funcionário:")
     setor_input = st.text_input("Setor do novo funcionário:")
     
-    if st.button("Adicionar Funcionário AFR"):
+    if st.button("💾 Adicionar Funcionário AFR"):
         if funcionario_input and setor_input:
             cursor = conn.cursor()
             cursor.execute("""
@@ -260,7 +269,7 @@ with tab2:
         else:
             st.warning("Por favor, preencha ambos os campos para adicionar um funcionário.")
 
-    if st.button("Editar Funcionários AFR"):
+    if st.button("✏️ Editar Funcionários AFR"):
         cursor = conn.cursor()
         for _, row in edited_funcionarios_afr.iterrows():
             if pd.isna(row['id']):
