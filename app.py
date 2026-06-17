@@ -238,7 +238,7 @@ with tab1:
             st.success("Todas as planilhas enviadas para MySQL com sucesso!")
             
             
-        if st.button("Limpar todas as planilhas do MySQL", key="limpar_mysql_todas"):
+        if st.button("Limpar Banco de Dados", key="limpar_mysql_todas"):
             cursor = conn.cursor()
             cursor.execute("DELETE FROM relatorio_agendamento_evolucoes")
             cursor.execute("DELETE FROM agendamentos_reintegrar")
