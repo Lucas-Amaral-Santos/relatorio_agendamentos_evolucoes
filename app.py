@@ -237,15 +237,33 @@ with tab1:
             df_to_mysql(df_evolucoes_reint, "evolucoes_reintegrar", conn)
             st.success("Todas as planilhas enviadas para MySQL com sucesso!")
             
-            
-        if st.button("Limpar Banco de Dados", key="limpar_mysql_todas"):
+
+    # Delete one month
+    months_options = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    month_input = st.selectbox("Selecione o mês limpar do MySQL (formato MM/YYYY):", options=months_options, key="mes_select")
+    ano_input = st.text_input("Digite o ano para limpar do MySQL (formato YYYY):", key="ano_input")
+    month_year_input = f"{month_input[:3].upper()}/{ano_input}" if month_input and ano_input else ""
+    if st.button("Limpar por Mês/Ano", key="limpar_mysql_mes_ano"):
+        if month_year_input:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM relatorio_agendamento_evolucoes")
-            cursor.execute("DELETE FROM agendamentos_reintegrar")
-            cursor.execute("DELETE FROM evolucoes_reintegrar")
+            cursor.execute("DELETE FROM relatorio_agendamento_evolucoes WHERE DATE_FORMAT(DATA, '%b/%Y') = %s", (month_year_input,))
+            cursor.execute("DELETE FROM agendamentos_reintegrar WHERE DATE_FORMAT(DATA, '%b/%Y') = %s", (month_year_input,))
+            cursor.execute("DELETE FROM evolucoes_reintegrar WHERE DATE_FORMAT(DATA, '%b/%Y') = %s", (month_year_input,))
             conn.commit()
             cursor.close()
-            st.success("Todas as planilhas foram limpas do MySQL com sucesso!")
+            st.success(f"Planilhas do MySQL limpas para o mês/ano {month_year_input} com sucesso!")
+        else:
+            st.warning("Por favor, selecione um mês e digite um ano válidos.")
+            
+            
+    if st.button("Limpar Banco de Dados", key="limpar_mysql_todas"):
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM relatorio_agendamento_evolucoes")
+        cursor.execute("DELETE FROM agendamentos_reintegrar")
+        cursor.execute("DELETE FROM evolucoes_reintegrar")
+        conn.commit()
+        cursor.close()
+        st.success("Todas as planilhas foram limpas do MySQL com sucesso!")
         
 with tab2:
     st.markdown("## Funcionários da AFR:")
