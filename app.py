@@ -236,6 +236,16 @@ with tab1:
             df_to_mysql(df_pacientes_reint, "agendamentos_reintegrar", conn)
             df_to_mysql(df_evolucoes_reint, "evolucoes_reintegrar", conn)
             st.success("Todas as planilhas enviadas para MySQL com sucesso!")
+            
+            
+        if st.button("Limpar todas as planilhas do MySQL", key="limpar_mysql_todas"):
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM relatorio_agendamento_evolucoes")
+            cursor.execute("DELETE FROM agendamentos_reintegrar")
+            cursor.execute("DELETE FROM evolucoes_reintegrar")
+            conn.commit()
+            cursor.close()
+            st.success("Todas as planilhas foram limpas do MySQL com sucesso!")
         
 with tab2:
     st.markdown("## Funcionários da AFR:")
